@@ -17,10 +17,62 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         {
            //still need to dive into what beginpaint does to this struct
            PAINTSTRUCT ps; 
+
+           //returns a "device context" which is a pointer to a bunch
+           //of shit that is passed to windowsGDL to draw
+           //GDL being a cpu based rendering API - we will do GPU rendering laterr
            HDC hdc = BeginPaint(hwnd, &ps);
-           //also need to dive into what this does
-           FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1)); 
+           
+           //fillRect takes the hdc, a pointer to the RECT structure (which contains the coordinates we want to fill)
+           //and the brush we want to use, specified by GDI 
+           //The HBRUSH is a typecast, specifying it is a brush
+           //the reason is that usually, you pass a pointer to a brush object
+           //but sometimes, for build in windows colors, you pass an integer , which s why the offset
+           // + 1 is required to make it an int, but of course since it is supposed to take a brush
+           //this would upset the compiler without casting it to a brush
+           //This is just. really bad design frankly
+           FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_HIGHLIGHT+1)); 
            EndPaint(hwnd, &ps);
+        };
+    case WM_CREATE:
+        {
+            //-----initialize the bitmap we will be writing to-----
+                
+            //pointer to our pixel data, must be void because we don't yet know if it will be 32 bit, 64 bit etc. bitmap
+            *void pixelDataPtr;
+
+            //handle to the device context for the client area of the window we want to write to 
+            HDC hdc = getDC(hwnd); 
+
+            //@param 1 the handle to the client area of the window
+            //@param 2 - BITMAPINFO
+            //@param 3 - a description of how bmiColors is specified in the BITMAPINFO, so GDI knows how to interpret it
+            // as you can either specify the colors directly as rgb values, or in another fancier way I am not doing right now
+            //@param 4 - the pointer to our pixel data
+            //@param 5 - handle to file mapping section - MTF
+            //@param 6 - only matters is param 5 isn't NULL
+            HBITMAP CreateDIBSection(hdc, __UNKNOWN__, DIB_RGB_COLORS. pixelDataPtr, NULL, NULL);
+
+            //we need to create a struct to hold application data, like the pixel data that winProc can write to and use
+            //and the bitmap handle which points to a struct containing both the pixel data, and other data like the colour table
+            //windows GDI will use the provided data alongside the pixel data we wrote to draw the correct image
+            //
+            //summary; I will create the image by writing to the space in memory pointed to by our pixel data pointer, then i give GDI the handle to the bitmap generally, and it will use that pixel data, alongside the other data, like the color table, to draw to the screen
+            //This is storing both of those pointers in a struct which I can then associate with the window
+            LONG_PTR rendererDataStructPtr = {
+            }
+
+
+            //we want to create a bitmap and store a reference to it with our window
+            //so that it is accesible by winProc to write to
+            
+            //pointer to the user data stored alongside window, this will include our bitmap
+            //@param 1 - takes the handle to the window
+            //@param 2 - an integer defining an index for which block of data associated with the window
+            //we want to associate this with - GWLP_USER_DATA, is an area defined for the application to use
+            //for storing this sort of user / application data. It resolved to -21 afaik. 
+            //@param 3 - the pointer to the data we want to associate with our window
+            LONG_PTR windowUserDataPtr = SetWindowLongPtr(hwnd, GWLP_USER_DATA, rendererDataStructPtr)
         }
     }
     //what
@@ -102,3 +154,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     return 0;
 };
 
+
+void drawLine(){
+   //quuee message    
+}
