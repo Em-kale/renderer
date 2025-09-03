@@ -10,6 +10,11 @@ typedef struct{
     LONG lHeight;
 } RendererData;
 
+//to be called by WndProc
+//take contents of bitmap, associate with new Device Context, copy that DC to window DC
+int copyBitmapToWindow(){
+
+}
 //callback called by the application when something happens
 //CALLBACK macro evaluated to the same thing as WINAPI (__stdcall)
 //But indicates that the operating system calls this, rather than the application
@@ -25,19 +30,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
                //returns a "device context" which is a pointer to a bunch
                //of shit that is passed to windowsGDL to draw
-               //GDL being a cpu based rendering API - we will do GPU rendering laterr
-               HDC hdc = BeginPaint(hwnd, &ps);
-               
-               //fillRect takes the hdc, a pointer to the RECT structure (which contains the coordinates we want to fill)
-               //and the brush we want to use, specified by GDI 
-               //The HBRUSH is a typecast, specifying it is a brush
-               //the reason is that usually, you pass a pointer to a brush object
-               //but sometimes, for build in windows colors, you pass an integer , which s why the offset
-               // + 1 is required to make it an int, but of course since it is supposed to take a brush
-               //this would upset the compiler without casting it to a brush
-               //This is just. really bad design frankly
-               FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_HIGHLIGHT+1)); 
-               EndPaint(hwnd, &ps);
+               HDC hdc = GetDC(hwnd); 
+                
+               //do a bitbit from our bitmap to the device context for the window
+                //
                return 0;
         }
         case WM_CREATE:
