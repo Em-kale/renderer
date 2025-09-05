@@ -12,8 +12,24 @@ typedef struct{
 
 //to be called by WndProc
 //take contents of bitmap, associate with new Device Context, copy that DC to window DC
-int copyBitmapToWindow(){
+BOOL copyBitmapToWindow(HWND hwnd, HDC hWinDc, HBITMAP hBitmap){
+   //accepts the the window hdc
+   HDC hMemDc = CreateCompatibleHdc(hWinDc); 
+   
+   //copy bitmap to new hdc
+   
+    SelectObject(hMemDc, hBitmap);
 
+    //need to get cx, cy. height and width of the damn thing
+    LPRECT lpRectWindow;
+    GetWindowRect(hwnd, lpRectWindow);
+    int width = lpRectWindow->right - lpRectWindow.left;
+    int height = lpRectWindow->Top - lpRectWindow.bottom;
+
+    printf("height%d", height);
+    printf("width%d", width);
+    
+    return BitBit(hWinDc, 0, 0, width, height, hMemDc, 0, 0, SRCCOPY);
 }
 //callback called by the application when something happens
 //CALLBACK macro evaluated to the same thing as WINAPI (__stdcall)
@@ -31,7 +47,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                //returns a "device context" which is a pointer to a bunch
                //of shit that is passed to windowsGDL to draw
                HDC hdc = GetDC(hwnd); 
-                
+               //how get bitmap
+               copyBitmapToWindow(hwnd, hdc, BITMAP_TO_ADD);    
                //do a bitbit from our bitmap to the device context for the window
                 //
                return 0;
