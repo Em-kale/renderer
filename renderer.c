@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <windows.h> 
 
 typedef struct{
@@ -10,27 +11,42 @@ typedef struct{
     LONG lHeight;
 } RendererData;
 
+BOOL resized = FALSE;
 //to be called by WndProc
 //take contents of bitmap, associate with new Device Context, copy that DC to window DC
-BOOL copyBitmapToWindow(HWND hwnd, HDC hWinDc, HBITMAP hBitmap){
-   //accepts the the window hdc
-   HDC hMemDc = CreateCompatibleHdc(hWinDc); 
-   
-   //copy bitmap to new hdc
-   
-    SelectObject(hMemDc, hBitmap);
+BOOL paintBitmapInWindow(HWND hwnd, HDC hWinDc, HBITMAP hBitmap){
+    //accepts the the window hdc
+    HDC hMemDc = CreateCompatibleDC(hWinDc); 
 
-    //need to get cx, cy. height and width of the damn thing
-    LPRECT lpRectWindow;
-    GetWindowRect(hwnd, lpRectWindow);
-    int width = lpRectWindow->right - lpRectWindow.left;
-    int height = lpRectWindow->Top - lpRectWindow.bottom;
+    //copy bitmap to new dc
+    HBITMAP oldBitMap = (HBITMAP)SelectObject(hMemDc, hBitmap);
+    DIBSECTION dib; 
 
-    printf("height%d", height);
-    printf("width%d", width);
-    
-    return BitBit(hWinDc, 0, 0, width, height, hMemDc, 0, 0, SRCCOPY);
+    int bresult = GetObject(hBitmap, sizeof(dib), &dib);
+
+    RECT rectWindow;
+    GetWindowRect(hwnd, &rectWindow);
+
+    int width = rectWindow.right - rectWindow.left;
+    int height = rectWindow.bottom - rectWindow.top;
+
+    BOOL result; 
+    if(resized == FALSE){ 
+        result = BitBlt(hWinDc, 0, 0, width, height, hMemDc, 0, 0, SRCCOPY);
+    } 
+    else{ 
+        int sourceHeight = dib.dsBmih.biHeight;
+        int sourceWidth = dib.dsBmih.biWidth;
+        result = StretchBlt(hWinDc, 0, 0, width, height, hMemDc, 0, 0, sourceWidth, sourceHeight, SRCCOPY);
+        resized = FALSE;
+    } 
+
+    //sets the memDC back to being 
+    SelectObject(hMemDc, oldBitMap);
+    DeleteDC(hMemDc);
+    return result;
 }
+
 //callback called by the application when something happens
 //CALLBACK macro evaluated to the same thing as WINAPI (__stdcall)
 //But indicates that the operating system calls this, rather than the application
@@ -41,17 +57,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         case WM_PAINT:
             //in C, cases need brackets if a variable is declared in them, to keep them to the right scope
             {
+               printf("Painting!");
                //still need to dive into what beginpaint does to this struct
                PAINTSTRUCT ps; 
 
                //returns a "device context" which is a pointer to a bunch
                //of shit that is passed to windowsGDL to draw
-               HDC hdc = GetDC(hwnd); 
-               //how get bitmap
-               copyBitmapToWindow(hwnd, hdc, BITMAP_TO_ADD);    
+               HDC hdc = BeginPaint(hwnd, &ps);
+               //get bitmap 
+               RendererData* pRendererData = (RendererData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+               HBITMAP hBitmap = pRendererData->hDIB;
+               //need to get cx, cy. height and width of the damn thing
+               DIBSECTION dib; 
+               int bresult = GetObject(hBitmap, sizeof(dib), &dib);
                //do a bitbit from our bitmap to the device context for the window
-                //
+               paintBitmapInWindow(hwnd, hdc, hBitmap);    
+               EndPaint(hwnd, &ps);
                return 0;
+        }
+        case WM_SIZE: 
+        {
+                printf("resizing!");
+                RECT rectWindow;
+                GetWindowRect(hwnd, &rectWindow);
+                resized = TRUE;
+                InvalidateRect(hwnd, &rectWindow, TRUE);
+                return 0;
         }
         case WM_CREATE:
         {
@@ -59,10 +91,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             //-----initialize the bitmap we will be writing to-----
             
             //pointer to our pixel data, must be void because we don't yet know if it will be 32 bit, 64 bit etc. bitmap
-            void *pPixelData;
+            void* pPixelData = NULL;
 
             //handle to the device context for the client area of the window we want to write to 
-            //TODO: need to read more on this
             HDC hdc = GetDC(hwnd); 
 
             //metadata that will be stored with the DIB kernel object
@@ -70,10 +101,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             //creating instance of the BITMAPINFO struct as a variable
             BITMAPINFO bitMapInfo;
 
+            RECT rectWindow;
+            GetWindowRect(hwnd, &rectWindow);
+            int width = rectWindow.right - rectWindow.left;
+            int height = rectWindow.bottom - rectWindow.top;
+
             //set some basic bitmap info
             bitMapInfo.bmiHeader.biSize = sizeof(bitMapInfo);
-            bitMapInfo.bmiHeader.biWidth =  200;
-            bitMapInfo.bmiHeader.biHeight = 200;
+            bitMapInfo.bmiHeader.biWidth =  width;
+            bitMapInfo.bmiHeader.biHeight = height;
             bitMapInfo.bmiHeader.biPlanes = 1; //always 1, thanks microsoft.. 
             bitMapInfo.bmiHeader.biBitCount = 32; //the number of bits used to represent a pixel's color
             bitMapInfo.bmiHeader.biCompression = BI_RGB; //uncompressed color values - don't yet know when you might want compressed
@@ -89,7 +125,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             //@param 4 - the pointer to our pixel data
             //@param 5 - handle to file mapping section - MTF
             //@param 6 - only matters is param 5 isn't NULL
-            HBITMAP hDIB = CreateDIBSection(hdc, &bitMapInfo, DIB_RGB_COLORS, pPixelData, NULL, 0);
+            HBITMAP hDIB = CreateDIBSection(hdc, &bitMapInfo, DIB_RGB_COLORS, &pPixelData, 0, 0);
 
             //we need to create a struct to hold application data, like the pixel data that winProc can write to and use
             //and the bitmap handle which points to a struct containing both the pixel data, and other data like the colour table
@@ -99,7 +135,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             //This is storing both of those pointers in a struct which I can then associate with the window
             //TODO: deallocate
             RendererData *rendererData = malloc(sizeof(RendererData));
-
+            
             //this syntax is equiv to *rendererData.pPixelData 
             rendererData->pPixelData = pPixelData;
             rendererData->hDIB = hDIB;
@@ -108,6 +144,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             rendererData->lWidth = bitMapInfo.bmiHeader.biWidth;
             rendererData->size = sizeof(RendererData);         
 
+
+            uint32_t* pixelPtr = (uint32_t*)pPixelData;
+            // Loop through each pixel and set its value
+            for (long i = 0; i < width*height; ++i) {
+                pixelPtr[i] = 0xFF00FF00;
+            }
             //we want to create a bitmap and store a reference to it with our window
             //so that it is accesible by winProc to write to
             
@@ -117,7 +159,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             //we want to associate this with - GWLP_USER_DATA, is an area defined for the application to use
             //for storing this sort of user / application data. It resolved to -21 afaik. 
             //@param 3 - the pointer to the data we want to associate with our window
-            LONG_PTR windowUserDataPtr = SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)&rendererData);
+            LONG_PTR windowUserDataPtr = SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)rendererData);
 
             ReleaseDC(hwnd,hdc);
             return 0;
