@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <windows.h> 
-
+#include "renderer.h"
 // ------------------Internal Renderer Stuff ------------------------
 //
 #define WM_DRAW_SQUARE (WM_APP + 420)
+#define WM_INIT_WINDOW (WM_APP + 69)
 
 typedef struct{
     LONG size;
@@ -16,6 +17,7 @@ typedef struct{
 } RendererData;
 
 BOOL resized = FALSE;
+HINSTANCE g_hInstance;
 
 BOOL paintBitmapInWindow(HWND hwnd, HDC hWinDc, HBITMAP hBitmap){
     HDC hMemDc = CreateCompatibleDC(hWinDc); 
@@ -47,17 +49,11 @@ BOOL paintBitmapInWindow(HWND hwnd, HDC hWinDc, HBITMAP hBitmap){
     return result;
 }
 
-int drawSquare(HWND hwnd, int x, int y, int height, int width){
-    //we are going to create a new bitmap which will be
-    //copied to the window when paint is called after we call invalidateRect
-    printf("I am the renderer !! :3 I was called by a client, I will process the draw request nownow UwU! Nya!");
-}
-
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
  switch (uMsg){
         case WM_DRAW_SQUARE: 
         {
-            drawSquare(hwnd);
+            printf("Drawing square *-*");
         }
         case WM_PAINT:
             {
@@ -142,34 +138,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){ char CLASS_NAME[] = "windowClass"; WNDCLASSEXA wc = { };
-    wc.hInstance = hInstance;  //several programs might create a window class with the same name
-    wc.cbSize = sizeof(WNDCLASSEXA);                  //need to provide the location so the OS knows which one we are referring to
-    wc.lpfnWndProc = WndProc; //this is the function called when something happens (main message handling loop)
-    wc.lpszClassName = CLASS_NAME; 
-
-    RegisterClassEx(&wc); //passes address of wc to registerClass 
-    
-    HWND hwnd; //where the instance of the window we create lives
-    hwnd = CreateWindowEx(
-        0, //optional window styles
-        CLASS_NAME,
-        "My first window!", //name of the window
-        WS_OVERLAPPEDWINDOW, //window styles, others include things like WS_POPUP, etc
-        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, //size and position, in the order. x,y, width, height
-        NULL, //parent window
-        NULL, //menu - will dive deeper on this later I imagine
-        hInstance, //so the OS knows which application owns this instance, important for lots of stuff!!  
-        NULL //additional app data - not sure what might go here
-    );
-
-    //if that fails, crash out :3
-    if (hwnd == NULL){
-        return 0;
-    };
-
-    ShowWindow(hwnd, nCmdShow);
-    
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){ 
+    g_hInstance = hInstance;  
 
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0) > 0){
@@ -182,6 +152,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 // ----------------- CLIENT API ----------------
 // create the window - provide className etc, returns the hwnd
 // needs a custom message handle
-int initWindow(){}
+HWND InitWindow(){
+    char CLASS_NAME[] = "windowClass"; WNDCLASSEXA wc = { };
+    wc.hInstance = g_hInstance;  //several programs might create a window class with the same name
+    wc.cbSize = sizeof(WNDCLASSEXA);                  //need to provide the location so the OS knows which one we are referring to
+    wc.lpfnWndProc = WndProc; //this is the function called when something happens (main message handling loop)
+    wc.lpszClassName = CLASS_NAME; 
+
+    RegisterClassEx(&wc); //passes address of wc to registerClass 
+    
+    HWND hwnd; //where the instance of the window we create lives
+    hwnd = CreateWindowEx(
+        0, //optional window styles
+        CLASS_NAME,
+        "Rendered Window", //name of the window
+        WS_OVERLAPPEDWINDOW, //window styles, others include things like WS_POPUP, etc
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, //size and position, in the order. x,y, width, height
+        NULL, //parent window
+        NULL, //menu - will dive deeper on this later I imagine
+        g_hInstance, //so the OS knows which application owns this instance, important for lots of stuff!!  
+        NULL //additional app data - not sure what might go here
+    );
+
+    //if that fails, crash out :3
+    if (hwnd == NULL){
+        return 0;
+    };
+
+    ShowWindow(hwnd, 0);
+    return hwnd;
+}
 
 int SendDrawSquareMessage(int x, int y, int height, int width){}
