@@ -1,14 +1,19 @@
 #include "renderer.h"
-#include <windows.h>
 #include <stdio.h> 
 #include <stdint.h>
+#include <windows.h>
 #include <stdlib.h>
+#include <time.h> // For nanosleep
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){     char CLASS_NAME[] = "clientClass"; 
-    WNDCLASSEXA wc = { };
-    printf("I am a client ^-^");
-    system("renderer.exe");
-    InitWindow();
+int frame(){ 
+    printf("in testfunctionPtr - clinet \n");
+    DrawSquare(10, 10, 10, 10);
+    return 0;
+}
+
+int begin(){ 
+    printf("in begin - clinet \n");
+    Run(frame);
     return 0;
 }
 

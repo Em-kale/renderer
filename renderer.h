@@ -1,5 +1,8 @@
-#include <windows.h> 
+#ifndef RENDERER_H 
+#define RENDERER_H
 
-HWND InitWindow();
+int Run(int (*clientFrameCallback)());
+int DrawSquare(int x, int y, int width, int height);
+#endif //RENDERER_H
 
 
