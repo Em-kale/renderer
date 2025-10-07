@@ -64,11 +64,36 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             DIBSECTION dib; 
             int bresult = GetObject(hBitmap, sizeof(dib), &dib);
             uint32_t* pixelPtr = (uint32_t*)pRendererData->pPixelData;
-            
-            //add square location calc logic
-            for (long i = 10; i < 100000; i=i+1) {
-                pixelPtr[i] = 0xFFF222FF;
+
+            int position = 0; 
+
+
+            int x = 60;
+            int y = 60;
+            int bitmapWidth = dib.dsBmih.biWidth;
+            int bitmapHeight = dib.dsBmih.biHeight;
+            int bytesPerPixel = 4;
+        
+            int paramHeight = 100;
+            int paramWidth = 100;
+
+            int pixelOffsetStart = (y * bitmapWidth + x) * bytesPerPixel;
+          
+            //for each y
+            //essentially draw a series of lines
+            for(int i = 0; i < paramHeight; i++){
+                int startingPosition = (y * bitmapWidth + x) * bytesPerPixel;
+                for(int j = startingPosition; j < startingPosition + paramWidth * 4; j++){
+                        pixelPtr[j] = 0xFFF222FF;
+                }
+                y=y+1;
             }
+
+            //add square location calc logic
+            //creates a bar of correct height but doesn't limit the width, so it is as wide as the screen
+            //for (long i = pixelOffsetStart; i < pixelOffsetEnd; i=i+1) {
+            //    pixelPtr[i] = 0xFFF222FF;
+            //}
 
             InvalidateRect(hwnd, NULL, TRUE);
             UpdateWindow(hwnd);
