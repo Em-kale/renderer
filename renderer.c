@@ -64,6 +64,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             DIBSECTION dib; 
             int bresult = GetObject(hBitmap, sizeof(dib), &dib);
             uint32_t* pixelPtr = (uint32_t*)pRendererData->pPixelData;
+
             int position = 0; 
 
 
